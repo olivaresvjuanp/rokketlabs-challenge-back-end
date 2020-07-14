@@ -1,0 +1,32 @@
+{
+  "name": "rokketlabs-challenge-back-end",
+  "version": "0.1.0",
+  "description": "Rokketlabs Full Stack Challenge (back-end).",
+  "scripts": {
+    "test": "jest --forceExit --coverage --verbose",
+    "serve": "node dist/server.js",
+    "start": "yarn run serve",
+    "watch-ts": "tsc -w"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/olivaresvjuanp/rokketlabs-challenge-back-end.git"
+  },
+  "author": "Juan Olivares",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/olivaresvjuanp/rokketlabs-challenge-back-end/issues"
+  },
+  "homepage": "https://github.com/olivaresvjuanp/rokketlabs-challenge-back-end#readme",
+  "dependencies": {
+    "express": "^4.17.1",
+    "mongoose": "^5.9.24"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.7",
+    "@types/mongoose": "^5.7.31",
+    "jest": "^26.1.0",
+    "tslint": "^6.1.2",
+    "typescript": "^3.9.6"
+  }
+}
