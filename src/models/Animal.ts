@@ -1,7 +1,5 @@
 import mongoose from 'mongoose';
 
-import { formatCommonName } from '../helpers';
-
 const Schema = mongoose.Schema;
 
 const animalSchema = new Schema({
@@ -29,4 +27,12 @@ const animalSchema = new Schema({
   }
 });
 
-export const Animal = mongoose.model('Animal', animalSchema);
+export interface AnimalDocument extends mongoose.Document {
+  photoUrl: string;
+  commonName: string;
+  formattedCommonName: string;
+  scientificName: string;
+  habitat: string;
+}
+
+export const Animal = mongoose.model<AnimalDocument>('Animal', animalSchema);
