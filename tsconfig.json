@@ -4,7 +4,7 @@
     "esModuleInterop": true,
     "module": "commonjs",
     "moduleResolution": "node",
-    "noImplicitAny": true,
+    "noImplicitAny": false,
     "outDir": "dist",
     "paths": {
       "*": [
@@ -12,6 +12,7 @@
         "src/types/*"
       ]
     },
+    "resolveJsonModule": true,
     "sourceMap": true,
     "target": "es6"
   },
