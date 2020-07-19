@@ -4,13 +4,13 @@ import {
   Response
 } from 'express';
 
-import { Animal } from '../../models/Animal';
 import { formatCommonName } from '../../helpers';
+import { Animal } from '../../models/Animal';
 
 const router = Router();
 
 router.get('/', (req: Request, res: Response) => {
-  Animal.estimatedDocumentCount((error, count: number): void => {
+  Animal.estimatedDocumentCount((error, count) => {
     if (error) {
       console.error(error);
       res.sendStatus(500);
@@ -30,8 +30,8 @@ router.get('/', (req: Request, res: Response) => {
   });
 });
 
-router.get('/:commonName', (req: Request, res: Response) => {
-  Animal.findOne({ formattedCommonName: formatCommonName(req.params.commonName) })
+router.get('/:id', (req: Request, res: Response) => {
+  Animal.findOne({ id: req.params.id })
     .then(animal => {
       if (animal)
         res.json(animal);
@@ -52,7 +52,7 @@ router.post('/', (req: Request, res: Response) => {
     habitat
   } = req.body;
 
-  const formattedCommonName: string = formatCommonName(commonName);
+  const formattedCommonName = formatCommonName(commonName);
 
   Animal.findOne({ formattedCommonName })
     .then(animal => {
@@ -68,7 +68,7 @@ router.post('/', (req: Request, res: Response) => {
         })
           .save()
           .then(animal => { res.json(animal); })
-          .catch(error => { // TODO: Handle validation errors.
+          .catch(error => {
             console.error(error);
             res.sendStatus(500);
           });
@@ -80,13 +80,16 @@ router.post('/', (req: Request, res: Response) => {
     });
 });
 
-router.delete('/:commonName', (req: Request, res: Response) => {
-  Animal.findOne({ formattedCommonName: formatCommonName(req.params.commonName) })
+router.delete('/:id', (req: Request, res: Response) => {
+  Animal.findOne({ id: req.params.id })
     .then(animal => {
       if (animal) {
         animal
           .remove()
-          .then((): void => { res.sendStatus(200); }) // I could use "res.json({ success: true });", but I think I just need to send HTTP 200 (in this case).
+          .then((): void => {
+            // I could use "res.json({ success: true });", but I think I just need to send HTTP 200 (in this case).
+            res.sendStatus(200);
+          })
           .catch(error => {
             console.error(error);
             res.sendStatus(500);
@@ -100,29 +103,26 @@ router.delete('/:commonName', (req: Request, res: Response) => {
     });
 });
 
-router.patch('/:commonName', (req: Request, res: Response) => {
-  Animal.findOne({ formattedCommonName: formatCommonName(req.params.commonName) })
+router.patch('/', (req: Request, res: Response) => {
+  const {
+    id,
+    photoUrl,
+    habitat
+  } = req.body;
+
+  Animal.findOne({ id })
     .then(animal => {
       if (animal) {
-        const {
-          photoUrl,
-          scientificName,
-          habitat
-        } = req.body;
-
         if (photoUrl)
           animal.photoUrl = photoUrl;
-
-        if (scientificName)
-          animal.scientificName = scientificName;
 
         if (habitat)
           animal.habitat = habitat;
 
         animal
           .save()
-          .then(animal => { res.json(animal); })
-          .catch(error => { // TODO: Handle validation errors.
+          .then(() => { res.sendStatus(200); })
+          .catch(error => {
             console.error(error);
             res.sendStatus(500);
           });

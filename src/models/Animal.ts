@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import autoIncrement from 'mongoose-auto-increment';
 
 const Schema = mongoose.Schema;
 
@@ -25,6 +26,14 @@ const animalSchema = new Schema({
     type: String,
     required: true
   }
+});
+
+autoIncrement.initialize(mongoose.connection);
+
+animalSchema.plugin(autoIncrement.plugin, {
+  field: 'id',
+  model: 'Animal',
+  startAt: 1
 });
 
 export interface AnimalDocument extends mongoose.Document {
