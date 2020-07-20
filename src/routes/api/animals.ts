@@ -9,42 +9,80 @@ import { Animal } from '../../models/Animal';
 
 const router = Router();
 
-router.get('/', (req: Request, res: Response) => {
+router.get('/get-animals/:page', (req: Request, res: Response) => {
+  console.debug('GET: /api/animals/:page', 'params', req.params);
+
+  const page = parseInt(req.params.page);
+
+  if (isNaN(page))
+    res.sendStatus(400);
+  else {
+    Animal
+      .find()
+      .limit(5)
+      .skip((page * 5) - 5)
+      .then(animals => {
+        console.log('length', animals.length);
+
+        res.json({
+          data: {
+            animals
+          }
+        });
+      })
+      .catch(error => {
+        console.error(error);
+        res.sendStatus(500);
+      });
+  }
+});
+
+router.get('/get-animal-details/:id', (req: Request, res: Response) => {
+  console.debug('GET: /api/animals/get-animal-details/:id', 'params', req.params);
+
+  const id = parseInt(req.params.id);
+
+  if (isNaN(id))
+    res.sendStatus(400);
+  else {
+    Animal.findOne({ id })
+      .then(animal => {
+        if (animal) {
+          res.json({
+            data: {
+              // ...
+            }
+          });
+        } else
+          res.sendStatus(404);
+      })
+      .catch(error => {
+        console.error(error);
+        res.sendStatus(500);
+      });
+  }
+});
+
+router.get('/get-count', (req: Request, res: Response) => {
+  console.debug('GET: /api/animals/get-count');
+
   Animal.estimatedDocumentCount((error, count) => {
     if (error) {
       console.error(error);
       res.sendStatus(500);
     } else {
-      Animal.find()
-        .then(animals => {
-          res.json({
-            count,
-            animals
-          });
-        })
-        .catch(error => {
-          console.error(error);
-          res.sendStatus(500);
-        });
+      res.json({
+        data: {
+          count
+        }
+      });
     }
   });
 });
 
-router.get('/:id', (req: Request, res: Response) => {
-  Animal.findOne({ id: req.params.id })
-    .then(animal => {
-      if (animal)
-        res.json(animal);
-      else
-        res.sendStatus(404);
-    })
-    .catch(error => {
-      console.error(error);
-      res.sendStatus(500);
-    });
-});
-
 router.post('/', (req: Request, res: Response) => {
+  console.debug('POST: /api/animals', 'body', req.body);
+
   const {
     photoUrl,
     commonName,
@@ -67,7 +105,13 @@ router.post('/', (req: Request, res: Response) => {
           habitat
         })
           .save()
-          .then(animal => { res.json(animal); })
+          .then(animal => {
+            res.json({
+              data: {
+                animal
+              }
+            });
+          })
           .catch(error => {
             console.error(error);
             res.sendStatus(500);
@@ -81,29 +125,39 @@ router.post('/', (req: Request, res: Response) => {
 });
 
 router.delete('/:id', (req: Request, res: Response) => {
-  Animal.findOne({ id: req.params.id })
-    .then(animal => {
-      if (animal) {
-        animal
-          .remove()
-          .then((): void => {
-            // I could use "res.json({ success: true });", but I think I just need to send HTTP 200 (in this case).
-            res.sendStatus(200);
-          })
-          .catch(error => {
-            console.error(error);
-            res.sendStatus(500);
-          });
-      } else
-        res.sendStatus(404);
-    })
-    .catch(error => {
-      console.error(error);
-      res.sendStatus(500);
-    });
+  console.debug('DELETE: /api/animals/:id', 'params', req.params);
+
+  const id = parseInt(req.params.id);
+
+  if (isNaN(id))
+    res.sendStatus(400);
+  else {
+    Animal.findOne({ id })
+      .then(animal => {
+        if (animal) {
+          animal
+            .remove()
+            .then((): void => {
+              // I could use "res.json({ success: true });", but I think I just need to send HTTP 200 (in this case).
+              res.sendStatus(200);
+            })
+            .catch(error => {
+              console.error(error);
+              res.sendStatus(500);
+            });
+        } else
+          res.sendStatus(404);
+      })
+      .catch(error => {
+        console.error(error);
+        res.sendStatus(500);
+      });
+  }
 });
 
 router.patch('/', (req: Request, res: Response) => {
+  console.debug('PATCH: /api/animals', 'body', req.body);
+
   const {
     id,
     photoUrl,
@@ -121,7 +175,13 @@ router.patch('/', (req: Request, res: Response) => {
 
         animal
           .save()
-          .then(() => { res.sendStatus(200); })
+          .then(animal => {
+            res.json({
+              data: {
+                animal
+              }
+            });
+          })
           .catch(error => {
             console.error(error);
             res.sendStatus(500);
