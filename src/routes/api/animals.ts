@@ -3,68 +3,98 @@ import {
   Request,
   Response
 } from 'express';
+import {
+  checkSchema,
+  validationResult
+} from 'express-validator';
 
 import { formatCommonName } from '../../helpers';
 import { Animal } from '../../models/Animal';
 
 const router = Router();
 
-router.get('/get-animals/:page', (req: Request, res: Response) => {
-  console.debug('GET: /api/animals/:page', 'params', req.params);
-
-  const page = parseInt(req.params.page);
-
-  if (isNaN(page))
-    res.sendStatus(400);
-  else {
-    Animal
-      .find()
-      .limit(5)
-      .skip((page * 5) - 5)
-      .then(animals => {
-        console.log('length', animals.length);
-
-        res.json({
-          data: {
-            animals
-          }
-        });
-      })
-      .catch(error => {
-        console.error(error);
-        res.sendStatus(500);
-      });
-  }
+const customValidationResult = validationResult.withDefaults({
+  formatter: error => error.param
 });
 
-router.get('/get-animal-details/:id', (req: Request, res: Response) => {
-  console.debug('GET: /api/animals/get-animal-details/:id', 'params', req.params);
-
-  const id = parseInt(req.params.id);
-
-  if (isNaN(id))
-    res.sendStatus(400);
-  else {
-    Animal.findOne({ id })
-      .then(animal => {
-        if (animal) {
-          res.json({
-            data: {
-              // ...
-            }
-          });
-        } else
-          res.sendStatus(404);
-      })
-      .catch(error => {
-        console.error(error);
-        res.sendStatus(500);
-      });
+router.get('/get-animals/:page', checkSchema({
+  page: {
+    in: 'params',
+    isNumeric: true,
+    toInt: true
   }
+}), (req, res: Response) => {
+  console.log(`GET: /api/animals/get-animals/:page - typeof :page = ${typeof req.params.page} (IP: ${req.ip}).`);
+
+  const result = customValidationResult(req);
+
+  if (!result.isEmpty()) {
+    res.status(400).json({
+      data: {
+        errors: result.array()
+      }
+    });
+
+    return;
+  }
+
+  Animal
+    .find()
+    .limit(5)
+    .skip((req.params.page * 5) - 5)
+    .then(animals => {
+      res.json({
+        payload: {
+          animals
+        }
+      });
+    })
+    .catch(error => {
+      console.error(error);
+      res.sendStatus(500);
+    });
+});
+
+router.get('/get-animal-details/:id', checkSchema({
+  id: {
+    in: 'params',
+    isNumeric: true,
+    toInt: true
+  }
+}), (req: Request, res: Response) => {
+  console.log(`GET: /api/animals/get-animal-details/:id - typeof :id = ${typeof req.params.id} (IP: ${req.ip}).`);
+
+  const result = customValidationResult(req);
+
+  if (!result.isEmpty()) {
+    res.status(400).json({
+      data: {
+        errors: result.array()
+      }
+    });
+
+    return;
+  }
+
+  Animal.findOne({ id: req.params.id })
+    .then(animal => {
+      if (animal) {
+        res.json({
+          payload: {
+            animal
+          }
+        });
+      } else
+        res.sendStatus(404);
+    })
+    .catch(error => {
+      console.error(error);
+      res.sendStatus(500);
+    });
 });
 
 router.get('/get-count', (req: Request, res: Response) => {
-  console.debug('GET: /api/animals/get-count');
+  console.log(`GET: /api/animals/get-count (IP: ${req.ip}).`);
 
   Animal.estimatedDocumentCount((error, count) => {
     if (error) {
@@ -72,7 +102,7 @@ router.get('/get-count', (req: Request, res: Response) => {
       res.sendStatus(500);
     } else {
       res.json({
-        data: {
+        payload: {
           count
         }
       });
@@ -80,8 +110,70 @@ router.get('/get-count', (req: Request, res: Response) => {
   });
 });
 
-router.post('/', (req: Request, res: Response) => {
-  console.debug('POST: /api/animals', 'body', req.body);
+router.post('/', checkSchema({
+  photoUrl: {
+    in: 'body',
+    isURL: {
+      options: {
+        protocols: ['http', 'https'],
+        require_valid_protocol: true,
+        require_protocol: true
+      }
+    }
+  },
+  commonName: {
+    in: 'body',
+    custom: {
+      options: commonName => {
+        return Animal.findOne({ formattedCommonName: formatCommonName(commonName) })
+          .then(animal => {
+            if (animal)
+              return Promise.reject();
+          });
+      }
+    },
+    isLength: {
+      options: {
+        min: 1,
+        max: 32
+      }
+    },
+    isString: true,
+  },
+  scientificName: {
+    in: 'body',
+    isLength: {
+      options: {
+        min: 1,
+        max: 32
+      }
+    },
+    isString: true
+  },
+  habitat: {
+    in: 'body',
+    isLength: {
+      options: {
+        min: 16,
+        max: 1000
+      }
+    },
+    isString: true
+  }
+}), (req: Request, res: Response) => {
+  console.log('POST: /api/animals - req.body:', req.body, `(IP: ${req.ip}).`);
+
+  const result = customValidationResult(req);
+
+  if (!result.isEmpty()) {
+    res.status(400).json({
+      payload: {
+        errors: result.array()
+      }
+    });
+
+    return;
+  }
 
   const {
     photoUrl,
@@ -90,33 +182,18 @@ router.post('/', (req: Request, res: Response) => {
     habitat
   } = req.body;
 
-  const formattedCommonName = formatCommonName(commonName);
-
-  Animal.findOne({ formattedCommonName })
+  new Animal({
+    photoUrl,
+    commonName,
+    formattedCommonName: formatCommonName(commonName),
+    scientificName,
+    habitat
+  })
+    .save()
     .then(animal => {
-      if (animal)
-        res.sendStatus(400);
-      else {
-        new Animal({
-          photoUrl,
-          commonName,
-          formattedCommonName,
-          scientificName,
-          habitat
-        })
-          .save()
-          .then(animal => {
-            res.json({
-              data: {
-                animal
-              }
-            });
-          })
-          .catch(error => {
-            console.error(error);
-            res.sendStatus(500);
-          });
-      }
+      res.json({
+        payload: { animal }
+      });
     })
     .catch(error => {
       console.error(error);
@@ -124,39 +201,89 @@ router.post('/', (req: Request, res: Response) => {
     });
 });
 
-router.delete('/:id', (req: Request, res: Response) => {
-  console.debug('DELETE: /api/animals/:id', 'params', req.params);
-
-  const id = parseInt(req.params.id);
-
-  if (isNaN(id))
-    res.sendStatus(400);
-  else {
-    Animal.findOne({ id })
-      .then(animal => {
-        if (animal) {
-          animal
-            .remove()
-            .then((): void => {
-              // I could use "res.json({ success: true });", but I think I just need to send HTTP 200 (in this case).
-              res.sendStatus(200);
-            })
-            .catch(error => {
-              console.error(error);
-              res.sendStatus(500);
-            });
-        } else
-          res.sendStatus(404);
-      })
-      .catch(error => {
-        console.error(error);
-        res.sendStatus(500);
-      });
+router.delete('/:id', checkSchema({
+  id: {
+    in: 'params',
+    isNumeric: true,
+    toInt: true
   }
+}), (req, res: Response) => {
+  console.log(`DELETE: /api/animals/:id - typeof :id = ${typeof req.params.id} (IP: ${req.ip}).`);
+
+  const result = customValidationResult(req);
+
+  if (!result.isEmpty()) {
+    res.status(400).json({
+      data: {
+        errors: result.array()
+      }
+    });
+
+    return;
+  }
+
+  Animal.findOne({ id: req.params.id })
+    .then(animal => {
+      if (animal) {
+        animal
+          .remove()
+          .then(() => { res.sendStatus(200); })
+          .catch(error => {
+            console.error(error);
+            res.sendStatus(500);
+          });
+      } else
+        res.sendStatus(404);
+    })
+    .catch(error => {
+      console.error(error);
+      res.sendStatus(500);
+    });
 });
 
-router.patch('/', (req: Request, res: Response) => {
-  console.debug('PATCH: /api/animals', 'body', req.body);
+router.patch('/', checkSchema({
+  id: {
+    in: 'body',
+    exists: true,
+    isInt: true,
+    toInt: true
+  },
+  photoUrl: {
+    in: 'body',
+    exists: true,
+    isURL: {
+      options: {
+        protocols: ['http', 'https'],
+        require_valid_protocol: true,
+        require_protocol: true
+      }
+    }
+  },
+  habitat: {
+    in: 'body',
+    exists: true,
+    isLength: {
+      options: {
+        min: 16,
+        max: 1000
+      }
+    },
+    isString: true
+  }
+}), (req, res: Response) => {
+  console.log('PATCH: /api/animals - req.body:', req.body, `(IP: ${req.ip}).`);
+
+  const result = customValidationResult(req);
+
+  if (!result.isEmpty()) {
+    res.status(400).json({
+      payload: {
+        errors: result.array()
+      }
+    });
+
+    return;
+  }
 
   const {
     id,
@@ -177,7 +304,7 @@ router.patch('/', (req: Request, res: Response) => {
           .save()
           .then(animal => {
             res.json({
-              data: {
+              payload: {
                 animal
               }
             });

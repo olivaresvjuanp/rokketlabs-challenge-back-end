@@ -27,7 +27,7 @@ mongoose.connect(config.mongo.uri, { // We have to connect the DB before startin
 })
   .then((): void => {
     try {
-      http.createServer(app).listen(config.server.port);
+      http.createServer(app).listen(config.server.port, '0.0.0.0');
     } catch (error) {
       throw error; // Throws error when HTTP server can't start.
     }
